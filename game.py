@@ -6,7 +6,7 @@ class Game(object):
         self.sio = sio
 
         # Game data.
-        self.playerIndex = None
+        self.player_index = None
 
         self.map = None  # Initialized in the first update call.
 
@@ -35,7 +35,7 @@ class Game(object):
 
 
     def game_start(self, data, teams):
-        self.playerIndex = data["playerIndex"];
+        self.player_index = data["playerIndex"];
         replay_url = 'http://bot.generals.io/replays/' + data["replay_id"];
         print("Game starting! Replay available at " + replay_url)
 
@@ -43,11 +43,27 @@ class Game(object):
     def game_update(self, data, *args):
         """ Update """
         if not self.map:
-            self.map = Map(data)
+            self.map = Map(data, self.player_index)
             return
         
         self.map.update(data)
+        largest_army = self.map.get_largest_owned_army()
+        source = largest_army
+        path = self.map.construct_path(largest_army, 
+                    self.map.get_closest_empty_tile(largest_army))
+        dest = path[0]
+        self.attack(self.map.coord_to_index(source, self.map.width),
+                    self.map.coord_to_index(dest, self.map.width),
+                    False)
+
+        self.map.print_everything()
+        print("Moving: " + str(source) + " to " + str(dest))
+        print("Path: " + str(path))
     
+
+    def attack(self, start, end, is50):
+        """ Wrapper function for the api's attack. """
+        self.sio.emit("attack", start, end, is50)
 
     def leave_game(self):
         self.sio.emit("leave_game")
