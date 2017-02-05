@@ -9,7 +9,9 @@ class Game(object):
         self.player_index = None
 
         self.map = None  # Initialized in the first update call.
-
+        self.turn_number = 0
+        self.file = None  # For logging.
+        self.path_name = "replay_log/"
 
     def on_connect(self):
         print("connect")
@@ -27,6 +29,8 @@ class Game(object):
 
 
     def on_disconnect(self):
+        if self.file:
+            self.file.close()
         print("disconnect")
 
 
@@ -39,9 +43,12 @@ class Game(object):
         replay_url = 'http://bot.generals.io/replays/' + data["replay_id"];
         print("Game starting! Replay available at " + replay_url)
 
+        self.file = open(self.path_name + data["replay_id"], "w")
+
 
     def game_update(self, data, *args):
         """ Update """
+        self.turn_number += 1
         if not self.map:
             self.map = Map(data, self.player_index)
             return
@@ -56,10 +63,15 @@ class Game(object):
                     self.map.coord_to_index(dest, self.map.width),
                     False)
 
+        # Print to console.
         self.map.print_everything()
         print("Moving: " + str(source) + " to " + str(dest))
         print("Path: " + str(path))
-    
+
+        # Log to file.
+        self.file.write("Turn " + str(self.turn_number) + ": ")
+        self.file.write("\n")
+
 
     def attack(self, start, end, is50):
         """ Wrapper function for the api's attack. """
