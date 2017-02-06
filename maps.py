@@ -12,7 +12,7 @@ class Map(A_star):
         """
         self.player_index = player_index
 
-        self.generals = None
+        self.generals = []
         self.cities = []
 
         self.map = []  # Comprehensive map including size, armies and terrains info.
@@ -23,13 +23,16 @@ class Map(A_star):
         self.armies = []
         self.terrains = []
 
-        # Groups that are organized through the _group_tiles methods.
+        # Groups that are organized through the _update_groups methods.
         # Tiles are represented as (x, y).
         self.owned_tiles = []
         self.empty_tiles = []
         self.enemy_tiles = []
+        self.city_tiles = []
+        self.general_tiles = []
 
-        self._first_update(data)
+        self._first_update = False
+        self.update(data)
 
 
     def update(self, data):
@@ -39,25 +42,109 @@ class Map(A_star):
         self._patch(self.map, data["map_diff"])
         self._patch(self.cities, data["cities_diff"])
 
+        if not self._first_update:
+            self._first_update = True
+            self.width = self.map[0]
+            self.height = self.map[1]
+            self.size = self.width*self.height
+
+        self.generals = data["generals"]
         self.armies = self._list_to_2D(self.map[2:self.size+2], self.width)
         self.terrains = self._list_to_2D(self.map[self.size+2:], self.width)
 
-        self._group_tiles()
+        self._update_groups()
 
 
     def print_everything(self):
         """ Print everything relevant """
         print(chr(27) + "[2J")  # Clear console.
-        print(chr(27) + "[2J")  # Clear console.
 
         print(str(self.width) + ", " + str(self.height))
-        print("Owned tiles: " + str(self.owned_tiles))
+        #print("Owned tiles: " + str(self.owned_tiles))
         print("Empty tiles: " + str(self.empty_tiles))
-        print("Enemy tiles: " + str(self.enemy_tiles))
+        #print("Enemy tiles: " + str(self.enemy_tiles))
+        #print("City tiles: " + str(self.city_tiles))
+        #print("General tiles: " + str(self.general_tiles))
         print("Armies:")
         self._print_map(self.armies, self.width, self.height)
-        print("Terrains:")
-        self._print_map(self.terrains, self.width, self.height)
+        #print("Terrains:")
+        #self._print_map(self.terrains, self.width, self.height)
+
+
+    def get_largest_owned_army(self):
+        """ Find the largest army you own. Return (x, y)"""
+        largest = 0
+        largest_army = None
+        for tile in self.owned_tiles:
+            army_size = self.armies[tile[0]][tile[1]]
+            if army_size > largest:
+                largest = army_size
+                largest_army = tile
+        return largest_army
+
+
+    def get_closest_empty_tile(self, source_tile):
+        return self._get_closest_tile_from_group(source_tile, self.empty_tiles)
+
+
+    def get_closest_enemy_tile(self, source_tile):
+        return self._get_closest_tile_from_group(source_tile, self.enemy_tiles)
+
+
+    def get_closest_enemy_general_tile(self, source_tile):
+        return self._get_closest_tile_from_group(source_tile, self.general_tiles)
+
+    def _get_closest_tile_from_group(self, source_tile, tile_group):
+        """
+        Find the nearest tile from the specified groupto the specified tile.
+        Return (x, y).
+        """
+        closest_distance = 999
+        closest_tile = None
+        for tile in tile_group:
+            distance = self.manhattan_distance(source_tile, tile)
+            if (distance < closest_distance and 
+                self.validate_tile(tile) and
+                self.construct_path(tile, source_tile)):  
+                # Validate tile, make sure it has a path to source.
+                closest_distance = distance
+                closest_tile = tile
+        return closest_tile
+
+
+    def _update_groups(self):
+        """ 
+        Group the tiles into a variety of useable lists.
+        Lists grouped: owned tiles, empty tiles, enemy tiles.
+        """
+        self.owned_tiles = []
+        self.empty_tiles = []
+        self.enemy_tiles = []
+        self.city_tiles = []
+        self.general_tiles = []
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.coord_to_index((x, y), self.width) in self.cities:
+                    self.city_tiles.append((x, y))
+                if (self.coord_to_index((x, y), self.width) in self.generals and
+                    self.coord_to_index((x, y), self.width) != self.generals[
+                                                                self.player_index]):
+                    self.general_tiles.append((x, y))
+
+                if self.terrains[x][y] == self.player_index:
+                    self.owned_tiles.append((x, y))
+                elif (self.terrains[x][y] == Map.TILE_EMPTY and
+                      (x, y) not in self.city_tiles):
+                    # Exclude city tiles.
+                    self.empty_tiles.append((x, y))
+                elif self.terrains[x][y] not in [Map.TILE_EMPTY,
+                                                 Map.TILE_MOUNTAIN,
+                                                 Map.TILE_FOG,
+                                                 Map.TILE_FOG_OBSTACLE]:
+                    self.enemy_tiles.append((x, y))
+
+
+
 
 
     def get_neighbors(self, tile):
@@ -85,56 +172,14 @@ class Map(A_star):
         else: return self.armies[tile[0]][tile[1]]/1
 
 
-    def get_largest_owned_army(self):
-        """ Find the largest army you own. Return (x, y)"""
-        largest = 0
-        largest_army = None
-        for tile in self.owned_tiles:
-            army_size = self.armies[tile[0]][tile[1]]
-            if army_size > largest:
-                largest = army_size
-                largest_army = tile
-        return largest_army
-
-
-    def get_closest_empty_tile(self, source_tile):
-        """
-        Find the nearest empty tile to the specified tile.
-        Return (x, y).
-        """
-        closest_distance = 999
-        closest_tile = None
-        for tile in self.empty_tiles:
-            distance = self.manhattan_distance(source_tile, tile)
-            if distance < closest_distance and self.validate_tile(tile):
-                closest_distance = distance
-                closest_tile = tile
-        return closest_tile
-
-
-    def _group_tiles(self):
-        """ 
-        Group the tiles into a variety of useable lists.
-        Lists grouped: owned tiles, empty tiles, enemy tiles.
-        """
-        self.owned_tiles = []
-        self.empty_tiles = []
-        self.enemy_tiles = []
-        for y in range(self.height):
-            for x in range(self.width):
-                if self.terrains[x][y] == self.player_index:
-                    self.owned_tiles.append((x, y))
-                elif self.terrains[x][y] == Map.TILE_EMPTY:
-                    self.empty_tiles.append((x, y))
-                elif self.terrains[x][y] not in [Map.TILE_MOUNTAIN,
-                                          Map.TILE_FOG,
-                                          Map.TILE_FOG_OBSTACLE]:
-                    self.enemy_tiles.append((x, y))
-
-
+    # Implements astar
     def validate_tile(self, tile):
-        if (tile[0] > 0 and
-            tile[1] > 0 and
+        """
+        Validate the tile for the purpose of pathfinding.
+        """
+        if (tile and
+            tile[0] >= 0 and
+            tile[1] >= 0 and
             tile[0] < self.width and
             tile[1] < self.height and
             self.terrains[tile[0]][tile[1]] != Map.TILE_MOUNTAIN):
@@ -191,31 +236,3 @@ class Map(A_star):
             for x in range(width):
                 print(map_ls[x][y], end="  ")
             print("")
-
-
-    def _first_update(self, data):
-        """
-        Only call this on init.
-        Basically update, except with a few more variables init.
-        """
-        self._patch(self.map, data["map_diff"])
-        self._patch(self.cities, data["cities_diff"])
-        self.generals = data["generals"]
-
-        self.width = self.map[0]
-        self.height = self.map[1]
-        self.size = self.width*self.height
-
-        self.armies = self._list_to_2D(self.map[2:self.size+2], self.width)
-        self.terrains = self._list_to_2D(self.map[self.size+2:], self.width)
-
-        self._group_tiles()
-
-        print(chr(27) + "[2J")  # Clear console.
-
-        print("Armies:")
-        self._print_map(self.armies, self.width, self.height)
-        print("Terrains:")
-        self._print_map(self.terrains, self.width, self.height)
-
-

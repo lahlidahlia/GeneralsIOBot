@@ -9,7 +9,7 @@ class Game(object):
         self.player_index = None
 
         self.map = None  # Initialized in the first update call.
-        self.turn_number = 0
+        self.update_count = 0
         self.file = None  # For logging.
         self.path_name = "replay_log/"
 
@@ -48,29 +48,56 @@ class Game(object):
 
     def game_update(self, data, *args):
         """ Update """
-        self.turn_number += 1
+        self.update_count += 1
         if not self.map:
             self.map = Map(data, self.player_index)
             return
         
         self.map.update(data)
+        # Source.
         largest_army = self.map.get_largest_owned_army()
         source = largest_army
-        path = self.map.construct_path(largest_army, 
-                    self.map.get_closest_empty_tile(largest_army))
-        dest = path[0]
-        self.attack(self.map.coord_to_index(source, self.map.width),
-                    self.map.coord_to_index(dest, self.map.width),
-                    False)
+        
+        # Destination.
+        dest = None
+        if(self.map.general_tiles):
+            dest = self.map.get_closest_enemy_general_tile(largest_army)
+        elif(self.map.enemy_tiles):
+            dest = self.map.get_closest_enemy_tile(largest_army)
+        elif(self.map.empty_tiles):
+            dest = self.map.get_closest_empty_tile(largest_army)
 
-        # Print to console.
+        # Next attack.
+        path = self.map.construct_path(largest_army, dest)
+        attack_dest = None
+        if path:
+            attack_dest = path[0]
+            # Send attack command.
+            self.attack(self.map.coord_to_index(source, self.map.width),
+                        self.map.coord_to_index(attack_dest, self.map.width),
+                        False)
+
+         Print to console.
         self.map.print_everything()
-        print("Moving: " + str(source) + " to " + str(dest))
+        if path:
+            print("Moving from " + str(source) + " to " +
+                    str(attack_dest) + " towards " + str(dest))
+        else:
+            print("Moving from " + str(source) + " towards " + str(dest))
         print("Path: " + str(path))
+        print("Generals: " + str(self.map.generals))
 
         # Log to file.
-        self.file.write("Turn " + str(self.turn_number) + ": ")
-        self.file.write("\n")
+        self.file.write("Turn " + str(self.update_count) + "\n")
+        if path:
+            self.file.write("Path: " + str(path))
+            self.file.write("Source: " + str(source) + 
+                    ", To: " + str(attack_dest) + "\n")
+            self.file.write("Moving toward: " + str(dest) + "\n")
+        else:
+            self.file.write("THERE ARE NO PATH PLEASE TAKE A LOOK")
+            self.file.write("Source: " + str(source) + ", Dest: " + str(dest) + "\n")
+        self.file.write("\n-------------------\n")
 
 
     def attack(self, start, end, is50):

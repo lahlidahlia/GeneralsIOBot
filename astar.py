@@ -41,6 +41,9 @@ class A_star(metaclass=abc.ABCMeta):
                     frontier.put((priority, next))
                     came_from[next] = current
                 
+        if goal_tile not in came_from:
+            # Check to make sure that we found a way to this tile.
+            return None
         current = goal_tile
         path = [current]
         while current != start_tile:
