@@ -16,7 +16,7 @@ class Game(object):
     def on_connect(self):
         print("connect")
 
-        user_id = "tinlun123bot"
+        user_id = "notbotbotbot"
         username = "TinBot"
 
         self.sio.emit("set_username", user_id, username)
@@ -25,6 +25,7 @@ class Game(object):
 
         self.sio.emit("join_private", custom_game_id, user_id)
         self.sio.emit("set_force_start", custom_game_id, True)
+        #self.sio.emit("join_1v1", user_id)
         print("bot.generals.io/games/" + custom_game_id)
 
 
@@ -77,7 +78,7 @@ class Game(object):
                         self.map.coord_to_index(attack_dest, self.map.width),
                         False)
 
-         Print to console.
+        #Print to console.
         self.map.print_everything()
         if path:
             print("Moving from " + str(source) + " to " +
@@ -104,7 +105,7 @@ class Game(object):
         """ Wrapper function for the api's attack. """
         self.sio.emit("attack", start, end, is50)
 
-    def leave_game(self):
+    def leave_game(self, *data):
         self.sio.emit("leave_game")
 
 

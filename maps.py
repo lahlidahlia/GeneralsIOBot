@@ -31,6 +31,18 @@ class Map(A_star):
         self.city_tiles = []
         self.general_tiles = []
 
+        # Checks for identifying enemy tiles, enemy tiles are not these things.
+        # Enemy tiles are also not player's tile.
+        self.enemy_tiles_check = [Map.TILE_EMPTY, 
+                                 Map.TILE_MOUNTAIN,
+                                 Map.TILE_FOG,
+                                 Map.TILE_FOG_OBSTACLE]
+        # The tile is invalidated for pathfinding if it is any one of these things.
+        self.validate_tiles_check = [Map.TILE_MOUNTAIN,
+                                     Map.TILE_FOG,
+                                     Map.TILE_FOG_OBSTACLE]
+
+
         self._first_update = False
         self.update(data)
 
@@ -124,11 +136,11 @@ class Map(A_star):
         self.general_tiles = []
         for y in range(self.height):
             for x in range(self.width):
-                if self.coord_to_index((x, y), self.width) in self.cities:
+                index = self.coord_to_index((x, y), self.width)
+                if index in self.cities:
                     self.city_tiles.append((x, y))
-                if (self.coord_to_index((x, y), self.width) in self.generals and
-                    self.coord_to_index((x, y), self.width) != self.generals[
-                                                                self.player_index]):
+                if (index in self.generals and
+                    index != self.generals[self.player_index]):
                     self.general_tiles.append((x, y))
 
                 if self.terrains[x][y] == self.player_index:
@@ -137,10 +149,7 @@ class Map(A_star):
                       (x, y) not in self.city_tiles):
                     # Exclude city tiles.
                     self.empty_tiles.append((x, y))
-                elif self.terrains[x][y] not in [Map.TILE_EMPTY,
-                                                 Map.TILE_MOUNTAIN,
-                                                 Map.TILE_FOG,
-                                                 Map.TILE_FOG_OBSTACLE]:
+                elif self.terrains[x][y] not in self.enemy_tiles_check:
                     self.enemy_tiles.append((x, y))
 
 
@@ -176,13 +185,14 @@ class Map(A_star):
     def validate_tile(self, tile):
         """
         Validate the tile for the purpose of pathfinding.
+        tile is (x, y).
         """
         if (tile and
             tile[0] >= 0 and
             tile[1] >= 0 and
             tile[0] < self.width and
             tile[1] < self.height and
-            self.terrains[tile[0]][tile[1]] != Map.TILE_MOUNTAIN):
+            self.terrains[tile[0]][tile[1]] not in self.validate_tiles_check):
                 return True
         else: return False
 
