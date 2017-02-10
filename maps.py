@@ -177,8 +177,8 @@ class Map(A_star):
         If the tile is friendly, the cost is 1/size.
         """
         if self.terrains[tile[0]][tile[1]] == self.player_index:
-            return 1/self.armies[tile[0]][tile[1]]
-        else: return self.armies[tile[0]][tile[1]]/1
+            return 1/(self.armies[tile[0]][tile[1]]+1)
+        else: return self.armies[tile[0]][tile[1]]+1
 
 
     # Implements astar

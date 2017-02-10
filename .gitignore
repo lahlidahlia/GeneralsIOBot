@@ -100,3 +100,5 @@ Session.vim
 *~
 # auto-generated tag files
 tags
+
+replay_log/
