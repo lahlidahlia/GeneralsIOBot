@@ -1,7 +1,9 @@
 import random
 import os
 from maps import Map
+import json
 class Game(object):
+    """ Before instantiating this object, make sure you have a user_config.json """
     def __init__(self, sio):
         self.sio = sio
 
@@ -16,16 +18,19 @@ class Game(object):
     def on_connect(self):
         print("connect")
 
-        user_id = "notbotbotbot"
-        username = "TinBot"
+        f = open("user_config.json", "r")
+        config_json = json.load(f)
+        f.close()
+        user_id = config_json["user_id"]
+        username = config_json["username"]
 
         self.sio.emit("set_username", user_id, username)
 
         custom_game_id = "tinbotprivategame"
 
-        self.sio.emit("join_private", custom_game_id, user_id)
-        self.sio.emit("set_force_start", custom_game_id, True)
-        #self.sio.emit("join_1v1", user_id)
+        #self.sio.emit("join_private", custom_game_id, user_id)
+        #self.sio.emit("set_force_start", custom_game_id, True)
+        self.sio.emit("join_1v1", user_id)
         print("bot.generals.io/games/" + custom_game_id)
 
 
